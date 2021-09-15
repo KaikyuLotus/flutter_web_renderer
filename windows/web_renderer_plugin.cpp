@@ -205,8 +205,17 @@ void WebRendererPlugin::HandleMethodCall(
     int y = static_cast<int>(std::get<double>((*frame_list)[1]));
     int width = static_cast<int>(std::get<double>((*frame_list)[2]));
     int height = static_cast<int>(std::get<double>((*frame_list)[3]));
-    ::SetWindowPos(GetRootWindow(registrar_->GetView()), nullptr, x, y, width,
-                   height, SWP_NOACTIVATE | SWP_NOOWNERZORDER);
+
+    HWND hWnd = GetRootWindow(registrar_->GetView());
+
+    RECT rcClient, rcWind;
+    POINT ptDiff;
+    ::GetClientRect(hWnd, &rcClient);
+    ::GetWindowRect(hWnd, &rcWind);
+    ptDiff.x = (rcWind.right - rcWind.left) - rcClient.right;
+    ptDiff.y = (rcWind.bottom - rcWind.top) - rcClient.bottom;
+
+    ::SetWindowPos(hWnd, nullptr, x, y, width + ptDiff.x, height + ptDiff.y, SWP_NOACTIVATE | SWP_NOOWNERZORDER);
     result->Success();
   } else {
     result->NotImplemented();
