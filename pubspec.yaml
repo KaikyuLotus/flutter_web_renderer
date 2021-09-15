@@ -13,11 +13,6 @@ dependencies:
   shelf: ^1.2.0
   flutter_cache_manager: ^3.1.2
   synchronized: ^3.0.0
-  window_size:
-    git:
-      url: git://github.com/google/flutter-desktop-embedding.git
-      path: plugins/window_size
-      ref: 03d957e
   cached_network_image: ^3.0.0
 
 dev_dependencies:
@@ -31,7 +26,14 @@ dev_dependencies:
 
 # The following section is specific to Flutter.
 flutter:
-
+  plugin:
+    platforms:
+      linux:
+        pluginClass: WebRendererPlugin
+      macos:
+        pluginClass: WebRendererPlugin
+      windows:
+        pluginClass: WebRendererPlugin
   # To add assets to your package, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg

@@ -11,8 +11,8 @@ import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:synchronized/synchronized.dart';
-import 'package:window_size/window_size.dart' as window_size;
 
+import 'window_size_utils.dart';
 import 'widgetable.dart';
 
 typedef _JsonMap = Map<String, dynamic>;
@@ -111,7 +111,7 @@ class Webserver {
     var widgetable = await config.requestMapping[path]!(jsonMap);
 
     var size = widgetable.size;
-    window_size.setWindowFrame(Rect.fromLTWH(0, 0, size.width, size.height));
+    setWindowFrame(Rect.fromLTWH(0, 0, size.width, size.height));
 
     await stateSetter?.call(widgetable);
 
