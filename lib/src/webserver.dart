@@ -17,6 +17,9 @@ import 'widgetable.dart';
 
 typedef _JsonMap = Map<String, dynamic>;
 
+const _severe = 1000;
+const _info = 800;
+
 typedef WebserverRequestMapping = Map<
     String,
     FutureOr<Widgetable> Function(
@@ -31,6 +34,7 @@ class WebserverConfig {
   final ImageConfiguration imageConfiguration;
   final CacheManager cacheManager;
   final bool autoCompressNetwork;
+  final bool logRequests;
 
   WebserverConfig({
     required this.requestMapping,
@@ -39,6 +43,7 @@ class WebserverConfig {
     this.renderTimeout = const Duration(seconds: 5),
     this.imageConfiguration = const ImageConfiguration(),
     this.autoCompressNetwork = true,
+    this.logRequests = false,
     CacheManager? cacheManager,
   }) : cacheManager = cacheManager ?? DefaultCacheManager();
 }
@@ -53,11 +58,31 @@ class Webserver {
   WebserverConfig config;
 
   Webserver({required this.config}) {
-    var handler = const Pipeline().addHandler(requestHandler);
+    var middleware = createMiddleware(
+      errorHandler: onRequestError,
+    );
+    if (config.logRequests) {
+      middleware = middleware.addMiddleware(logRequests(
+        logger: (message, isError) {
+          log(message, level: isError ? _severe : _info);
+        },
+      ));
+    }
+    var handler = middleware.addHandler(_requestHandler);
     shelf_io.serve(handler, config.address, config.port).then((server) {
       server.autoCompress = config.autoCompressNetwork;
       log('Serving at http://${server.address.host}:${server.port}');
     });
+  }
+
+  Future<Response> onRequestError(Object error, StackTrace stackTrace) async {
+    return Response.internalServerError(
+      body: json.encode({
+        'error': '$error',
+        'st': '$stackTrace',
+      }),
+      headers: {'Content-Type': 'application/json'},
+    );
   }
 
   Future<List<CachedNetworkImageProvider>> evaluateImages() async {
@@ -103,7 +128,7 @@ class Webserver {
     var path = request.url.path;
 
     if (!config.requestMapping.containsKey(path)) {
-      return Response.notFound('{"error": "Path not found"}');
+      return Response.notFound(json.encode({'error': 'Path not found'}));
     }
 
     var body = await request.readAsString();

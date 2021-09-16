@@ -35,7 +35,6 @@ class WindowSizeChannel {
   }
 }
 
-
 void setWindowFrame(Rect frame) async {
   WindowSizeChannel.instance.setWindowFrame(frame);
 }
