@@ -1,11 +1,11 @@
 name: web_renderer
 description: Renders images with HTTP requests.
-version: 0.0.1
-homepage:
+version: 0.0.2
+repository: https://github.com/KaikyuLotus/flutter_web_renderer
 
 environment:
   sdk: ">=2.14.0 <3.0.0"
-  flutter: ">=1.17.0"
+  flutter: ">=1.20.0"
 
 dependencies:
   flutter:
