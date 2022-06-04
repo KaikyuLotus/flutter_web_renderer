@@ -142,7 +142,7 @@ class Webserver {
 
     Response? response;
 
-    WidgetsBinding.instance!.addPostFrameCallback((millis) async {
+    WidgetsBinding.instance.addPostFrameCallback((millis) async {
       try {
         await evaluateImages();
 
