@@ -1,6 +1,6 @@
 name: web_renderer
 description: Renders images with HTTP requests.
-version: 0.0.4
+version: 0.0.4+1
 repository: https://github.com/KaikyuLotus/flutter_web_renderer
 
 environment:
@@ -14,6 +14,7 @@ dependencies:
   flutter_cache_manager: ^3.3.0
   synchronized: ^3.0.0+2
   cached_network_image: ^3.2.1
+  intl: ^0.17.0
 
 dev_dependencies:
   flutter_test:

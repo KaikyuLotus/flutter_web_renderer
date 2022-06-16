@@ -1,3 +1,8 @@
+## 0.0.4+1
+
+* Changes for logging in release mode - this is a server-side script
+* Minor refactoring
+
 ## 0.0.4
 
 * Handle paralel request by queuing them with a lock

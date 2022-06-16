@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:developer';
+import 'dart:io';
 import 'dart:ui';
+import 'package:intl/intl.dart';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
@@ -17,14 +18,23 @@ import 'widgetable.dart';
 
 typedef _JsonMap = Map<String, dynamic>;
 
-const _severe = 1000;
-const _info = 800;
-
 typedef WebserverRequestMapping = Map<
     String,
     FutureOr<Widgetable> Function(
   _JsonMap json,
 )>;
+
+String _getTime() {
+  return DateFormat('kk:mm:ss.SSS').format(DateTime.now());
+}
+
+void error(Object? i) {
+  stderr.writeln('${_getTime()} - $i');
+}
+
+void info(Object? i) {
+  stdout.writeln('${_getTime()} - $i');
+}
 
 class WebserverConfig {
   final WebserverRequestMapping requestMapping;
@@ -53,7 +63,7 @@ class Webserver {
 
   final canvasKey = GlobalKey();
 
-  Future Function(Widgetable?)? stateSetter;
+  void Function(Widgetable?)? stateSetter;
 
   WebserverConfig config;
 
@@ -64,14 +74,14 @@ class Webserver {
     if (config.logRequests) {
       middleware = middleware.addMiddleware(logRequests(
         logger: (message, isError) {
-          log(message, level: isError ? _severe : _info);
+          (isError ? error : info)(message);
         },
       ));
     }
-    var handler = middleware.addHandler(requestHandler);
+    final handler = middleware.addHandler(requestHandler);
     shelf_io.serve(handler, config.address, config.port).then((server) {
       server.autoCompress = config.autoCompressNetwork;
-      log('Serving at http://${server.address.host}:${server.port}');
+      info('Serving at http://${server.address.host}:${server.port}');
     });
   }
 
@@ -86,25 +96,26 @@ class Webserver {
   }
 
   Future<List<CachedNetworkImageProvider>> evaluateImages() async {
-    var imageUrls = <CachedNetworkImageProvider>[];
+    info('Evaluating images');
+    final imageUrls = <CachedNetworkImageProvider>[];
 
-    var completers = <Completer<void>>[];
+    final completers = <Completer<void>>[];
 
     ElementVisitor? visitor;
     visitor = (Element element) {
       if (element.widget is Image) {
-        var image = element.widget as Image;
+        final image = element.widget as Image;
         final Completer<void> completer = Completer<void>();
         completers.add(completer);
         image.image
             .resolve(config.imageConfiguration)
-            .addListener(ImageStreamListener((ImageInfo info, bool syncCall) {
+            .addListener(ImageStreamListener((ImageInfo i, bool syncCall) {
           if (!completer.isCompleted) {
             completer.complete();
           }
         }));
         if (image.image is CachedNetworkImageProvider) {
-          var cachedProvider = image.image as CachedNetworkImageProvider;
+          final cachedProvider = image.image as CachedNetworkImageProvider;
           imageUrls.add(cachedProvider);
         }
       }
@@ -115,6 +126,7 @@ class Webserver {
 
     await Future.wait(completers.map((e) => e.future));
     await Future.delayed(const Duration(milliseconds: 200));
+    info('Done evaluating images');
     return imageUrls;
   }
 
@@ -125,20 +137,24 @@ class Webserver {
   }
 
   Future<Response> _requestHandler(Request request) async {
-    var path = request.url.path;
+    final path = request.url.path;
 
     if (!config.requestMapping.containsKey(path)) {
       return Response.notFound(json.encode({'error': 'Path not found'}));
     }
 
-    var body = await request.readAsString();
-    var jsonMap = json.decode(body);
-    var widgetable = await config.requestMapping[path]!(jsonMap);
+    info('Handling new request: $path');
 
-    var size = widgetable.size;
+    final body = await request.readAsString();
+    final jsonMap = json.decode(body);
+    final widgetable = await config.requestMapping[path]!(jsonMap);
+
+    final size = widgetable.size;
+    info('Setting frame size to $size');
     setWindowFrame(Rect.fromLTWH(0, 0, size.width, size.height));
 
-    await stateSetter?.call(widgetable);
+    info('Calling state setter with the generated widgetable');
+    stateSetter?.call(widgetable);
 
     Response? response;
 
@@ -151,30 +167,37 @@ class Webserver {
 
         await evaluateImages();
 
-        var boundary = canvasKey.currentContext!.findRenderObject()!;
-        var image = await (boundary as RenderRepaintBoundary).toImage(
+        final boundary = canvasKey.currentContext!.findRenderObject()!;
+        info(
+          'Getting RenderRepaintBoundary as '
+          'Image with pixel ratio ${widgetable.pixelRatio}',
+        );
+        final image = await (boundary as RenderRepaintBoundary).toImage(
           pixelRatio: widgetable.pixelRatio,
         );
-        var byteData = await image.toByteData(format: ImageByteFormat.png);
+
+        info('Converting image to bytes');
+        final byteData = await image.toByteData(format: ImageByteFormat.png);
 
         response = Response.ok(
           byteData!.buffer.asUint8List(),
           headers: {'Content-Type': 'image/png'},
         );
       } on Exception catch (e, s) {
-        log('Cannot get screenshot', error: e, stackTrace: s);
         response = Response.internalServerError(body: '$e\n$s');
       }
     });
 
+    info('Waiting for frame to be rendered');
     while (response == null) {
       await Future.delayed(const Duration(milliseconds: 100));
     }
 
     if (kReleaseMode) {
-      await stateSetter?.call(null);
+      stateSetter?.call(null);
     }
 
+    info('All done');
     return response!;
   }
 }

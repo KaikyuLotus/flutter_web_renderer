@@ -26,7 +26,7 @@ class _RenderCanvasState extends State<RenderCanvas> {
   void initState() {
     super.initState();
 
-    widget.webserver.stateSetter = (Widgetable? widgetable) async {
+    widget.webserver.stateSetter = (Widgetable? widgetable) {
       setState(() => this.widgetable = widgetable);
     };
   }
