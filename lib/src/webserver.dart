@@ -68,7 +68,7 @@ class Webserver {
         },
       ));
     }
-    var handler = middleware.addHandler(_requestHandler);
+    var handler = middleware.addHandler(requestHandler);
     shelf_io.serve(handler, config.address, config.port).then((server) {
       server.autoCompress = config.autoCompressNetwork;
       log('Serving at http://${server.address.host}:${server.port}');
@@ -120,7 +120,7 @@ class Webserver {
 
   Future<Response> requestHandler(Request request) async {
     return lock.synchronized(
-      () async => await _requestHandler(request).timeout(config.renderTimeout),
+      () => _requestHandler(request).timeout(config.renderTimeout),
     );
   }
 
@@ -144,6 +144,11 @@ class Webserver {
 
     WidgetsBinding.instance.addPostFrameCallback((millis) async {
       try {
+        // Wait for canvas to be rendered
+        while (canvasKey.currentContext == null) {
+          await Future.delayed(const Duration(milliseconds: 10));
+        }
+
         await evaluateImages();
 
         var boundary = canvasKey.currentContext!.findRenderObject()!;
